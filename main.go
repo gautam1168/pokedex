@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
-	pokeapi "gautam1168/pokedexcli/pokeapi"
+	"gautam1168/pokedexcli/internal/pokeapi"
 	"os"
 	"strings"
 )
