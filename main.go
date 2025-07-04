@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	pokeapi "gautam1168/pokeapi"
 	"os"
 	"strings"
 )
@@ -10,10 +11,13 @@ import (
 type cliCommand struct {
 	name        string
 	description string
-	callback    func(r cmdRegistry) error
+	callback    func(*state) error
 }
 
-type cmdRegistry = map[string]cliCommand
+type state struct {
+	page        pokeapi.PokeLocationPage
+	cmdRegistry map[string]cliCommand
+}
 
 func cleanInput(text string) []string {
 	words := strings.Split(text, " ")
@@ -31,17 +35,56 @@ func cleanInput(text string) []string {
 	return result
 }
 
-func commandExit(r cmdRegistry) error {
+func commandExit(s *state) error {
 	fmt.Println("\nClosing the Pokedex... Goodbye!")
 	os.Exit(0)
 	return nil
 }
 
-func commandHelp(r cmdRegistry) error {
+func commandHelp(s *state) error {
 	fmt.Println("\nWelcome to the Pokedex!")
 	fmt.Printf("Usage: \n\n")
-	for _, cmd := range r {
+	for _, cmd := range s.cmdRegistry {
 		fmt.Printf("%s: %s\n", cmd.name, cmd.description)
+	}
+	return nil
+}
+
+func commandMap(s *state) error {
+	locationData, err := pokeapi.GetPokeLocations(&s.page)
+	locationData.Offset += 20
+	if err != nil {
+		return err
+	} else {
+		s.page = locationData
+	}
+
+	fmt.Println("")
+	for _, location := range locationData.Locations {
+		fmt.Println(location.Name)
+	}
+
+	return nil
+}
+
+func commandMapBack(s *state) error {
+	if s.page.Offset == 0 {
+		fmt.Println("\nyou're on the first page")
+	} else {
+		s.page.Offset -= 20
+		locationData, err := pokeapi.GetPokeLocations(&s.page)
+		if err != nil {
+			return err
+		} else {
+			s.page = locationData
+		}
+
+		fmt.Println("")
+		for _, location := range locationData.Locations {
+			fmt.Println(location.Name)
+		}
+
+		return nil
 	}
 	return nil
 }
@@ -61,6 +104,23 @@ func main() {
 			description: "Exit the Pokedex",
 			callback:    commandExit,
 		},
+		"map": {
+			name:        "map",
+			description: "Browse the map",
+			callback:    commandMap,
+		},
+		"mapb": {
+			name:        "mapb",
+			description: "Rewind the map",
+			callback:    commandMapBack,
+		},
+	}
+
+	s := state{
+		cmdRegistry: registry,
+		page: pokeapi.PokeLocationPage{
+			Offset: 0,
+		},
 	}
 
 	for {
@@ -71,9 +131,12 @@ func main() {
 		command := words[0]
 
 		if cmd, ok := registry[command]; ok {
-			cmd.callback(registry)
+			err := cmd.callback(&s)
+			if err != nil {
+				fmt.Println("\n", err.Error())
+			}
 		} else {
-			fmt.Println("Unknown command")
+			fmt.Println("\nUnknown command")
 		}
 	}
 }
