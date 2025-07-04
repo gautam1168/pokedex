@@ -4,8 +4,10 @@ import (
 	"bufio"
 	"fmt"
 	"gautam1168/pokedexcli/internal/pokeapi"
+	"gautam1168/pokedexcli/internal/pokecache"
 	"os"
 	"strings"
+	"time"
 )
 
 type cliCommand struct {
@@ -17,6 +19,7 @@ type cliCommand struct {
 type state struct {
 	page        pokeapi.PokeLocationPage
 	cmdRegistry map[string]cliCommand
+	cache       *pokecache.Cache
 }
 
 func cleanInput(text string) []string {
@@ -51,7 +54,7 @@ func commandHelp(s *state) error {
 }
 
 func commandMap(s *state) error {
-	locationData, err := pokeapi.GetPokeLocations(&s.page)
+	locationData, err := pokeapi.GetPokeLocations(&s.page, s.cache)
 	locationData.Offset += 20
 	if err != nil {
 		return err
@@ -72,7 +75,7 @@ func commandMapBack(s *state) error {
 		fmt.Println("\nyou're on the first page")
 	} else {
 		s.page.Offset -= 20
-		locationData, err := pokeapi.GetPokeLocations(&s.page)
+		locationData, err := pokeapi.GetPokeLocations(&s.page, s.cache)
 		if err != nil {
 			return err
 		} else {
@@ -121,6 +124,7 @@ func main() {
 		page: pokeapi.PokeLocationPage{
 			Offset: 0,
 		},
+		cache: pokecache.NewCache(5 * time.Second),
 	}
 
 	for {
