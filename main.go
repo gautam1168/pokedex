@@ -146,6 +146,35 @@ func commandCatch(s *state) error {
 	return nil
 }
 
+func commandInspect(s *state) error {
+	args := s.args
+	if len(args) != 1 {
+		return fmt.Errorf("expected exactly 1 argument for inspect command but obtained: %v", len(args))
+	}
+
+	if _, ok := s.pokemons[args[0]]; ok {
+		if pokemonDetails, err := pokeapi.GetPokemonDetails(args[0], s.cache); err == nil {
+			fmt.Println("Name: ", args[0])
+			fmt.Println("Height: ", pokemonDetails.Height)
+			fmt.Println("Weight: ", pokemonDetails.Weight)
+			fmt.Println("Stats: ")
+			for _, stat := range pokemonDetails.Stats {
+				fmt.Printf(" -%s:%v\n", stat.Stat.Name, stat.BaseStat)
+			}
+
+			fmt.Println("Types:")
+			for _, poktype := range pokemonDetails.Types {
+				fmt.Printf(" - %s\n", poktype.Type.Name)
+			}
+		} else {
+			return err
+		}
+	} else {
+		fmt.Println("you have not caught that pokemon")
+	}
+	return nil
+}
+
 func main() {
 
 	scanner := bufio.NewScanner(os.Stdin)
@@ -180,6 +209,11 @@ func main() {
 			name:        "catch",
 			description: "Catch a pokemon by name",
 			callback:    commandCatch,
+		},
+		"inspect": {
+			name:        "inspect",
+			description: "Inspect the stats of a caught pokemon",
+			callback:    commandInspect,
 		},
 	}
 
