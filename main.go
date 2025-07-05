@@ -20,6 +20,7 @@ type state struct {
 	page        pokeapi.PokeLocationPage
 	cmdRegistry map[string]cliCommand
 	cache       *pokecache.Cache
+	args        []string
 }
 
 func cleanInput(text string) []string {
@@ -92,6 +93,26 @@ func commandMapBack(s *state) error {
 	return nil
 }
 
+func commandExplore(s *state) error {
+	args := s.args
+	if len(args) != 1 {
+		return fmt.Errorf("expected exactly 1 argument for explore command but obtained: %v", len(args))
+	}
+
+	locations, err := pokeapi.GetPokemonInLocation(args[0], s.cache)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("\nExploring %s...\n", args[0])
+	fmt.Println("Found Pokemon:")
+	for _, loc := range locations {
+		fmt.Printf(" - %s\n", loc.Name)
+	}
+
+	return nil
+}
+
 func main() {
 
 	scanner := bufio.NewScanner(os.Stdin)
@@ -117,6 +138,11 @@ func main() {
 			description: "Rewind the map",
 			callback:    commandMapBack,
 		},
+		"explore": {
+			name:        "explore",
+			description: "See pokemons in location",
+			callback:    commandExplore,
+		},
 	}
 
 	s := state{
@@ -125,6 +151,7 @@ func main() {
 			Offset: 0,
 		},
 		cache: pokecache.NewCache(5 * time.Second),
+		args:  []string{},
 	}
 
 	for {
@@ -135,6 +162,10 @@ func main() {
 		command := words[0]
 
 		if cmd, ok := registry[command]; ok {
+			if len(words) > 1 {
+				s.args = words[1:]
+			}
+
 			err := cmd.callback(&s)
 			if err != nil {
 				fmt.Println("\n", err.Error())
