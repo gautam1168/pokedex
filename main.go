@@ -175,6 +175,14 @@ func commandInspect(s *state) error {
 	return nil
 }
 
+func commandPokedex(s *state) error {
+	fmt.Println("Your Pokedex: ")
+	for key := range s.pokemons {
+		fmt.Printf(" - %s\n", key)
+	}
+	return nil
+}
+
 func main() {
 
 	scanner := bufio.NewScanner(os.Stdin)
@@ -214,6 +222,11 @@ func main() {
 			name:        "inspect",
 			description: "Inspect the stats of a caught pokemon",
 			callback:    commandInspect,
+		},
+		"pokedex": {
+			name:        "pokedex",
+			description: "List pokemons you have caught",
+			callback:    commandPokedex,
 		},
 	}
 
