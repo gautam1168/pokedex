@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"gautam1168/pokedexcli/internal/pokeapi"
 	"gautam1168/pokedexcli/internal/pokecache"
+	"math/rand"
 	"os"
 	"strings"
 	"time"
@@ -19,6 +20,7 @@ type cliCommand struct {
 type state struct {
 	page        pokeapi.PokeLocationPage
 	cmdRegistry map[string]cliCommand
+	pokemons    map[string]bool
 	cache       *pokecache.Cache
 	args        []string
 }
@@ -113,6 +115,37 @@ func commandExplore(s *state) error {
 	return nil
 }
 
+func commandCatch(s *state) error {
+	args := s.args
+	if len(args) != 1 {
+		return fmt.Errorf("expected exactly 1 argument for catch command but obtained: %v", len(args))
+	}
+	if pokemonDetails, err := pokeapi.GetPokemonDetails(args[0], s.cache); err != nil {
+		return err
+	} else {
+		baseExperience := pokemonDetails.BaseExperience
+		fmt.Printf("Throwing a Pokeball at %s...\n", args[0])
+		if baseExperience == 0 {
+			s.pokemons[args[0]] = true
+			fmt.Printf("%s was caught!\n", args[0])
+		} else {
+			inverseBaseExp := (float64(baseExperience) / 400)
+			if inverseBaseExp >= 1 {
+				inverseBaseExp = 0.95
+			}
+			randomVal := float64(rand.Intn(100)) / 100
+			// fmt.Printf("base: %v, experince: %v, chance: %v\n", baseExperience, inverseBaseExp, randomVal)
+			if randomVal >= inverseBaseExp {
+				s.pokemons[args[0]] = true
+				fmt.Printf("%s was caught!\n", args[0])
+			} else {
+				fmt.Printf("%s escaped!\n", args[0])
+			}
+		}
+	}
+	return nil
+}
+
 func main() {
 
 	scanner := bufio.NewScanner(os.Stdin)
@@ -143,10 +176,16 @@ func main() {
 			description: "See pokemons in location",
 			callback:    commandExplore,
 		},
+		"catch": {
+			name:        "catch",
+			description: "Catch a pokemon by name",
+			callback:    commandCatch,
+		},
 	}
 
 	s := state{
 		cmdRegistry: registry,
+		pokemons:    make(map[string]bool),
 		page: pokeapi.PokeLocationPage{
 			Offset: 0,
 		},

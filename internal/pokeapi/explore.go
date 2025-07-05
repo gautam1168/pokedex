@@ -1,10 +1,7 @@
 package pokeapi
 
 import (
-	"encoding/json"
 	"gautam1168/pokedexcli/internal/pokecache"
-	"io"
-	"net/http"
 )
 
 type Pokemon struct {
@@ -27,36 +24,12 @@ func GetPokemonInLocation(location string, cache *pokecache.Cache) ([]Pokemon, e
 
 	result := []Pokemon{}
 
-	parsedLocation := LocationDetails{}
-	if cachedBytes, ok := cache.Get(fullUrl); ok {
-		if err := json.Unmarshal(cachedBytes, &parsedLocation); err != nil {
-			return result, nil
-		}
+	if parsedLocation, err := GetDataAndParse[LocationDetails](fullUrl, cache); err != nil {
+		return result, err
 	} else {
-		request, err := http.NewRequest("GET", fullUrl, nil)
-		if err != nil {
-			return result, err
+		for _, poke := range parsedLocation.Encounters {
+			result = append(result, poke.Pokemon)
 		}
-
-		request.Header.Set("Content-Type", "application/json")
-		response, err := http.DefaultClient.Do(request)
-		if err != nil {
-			return result, err
-		}
-		defer response.Body.Close()
-		if networkBytes, err := io.ReadAll(response.Body); err == nil {
-			if err := json.Unmarshal(networkBytes, &parsedLocation); err != nil {
-				return result, nil
-			}
-			cache.Add(fullUrl, networkBytes)
-		} else {
-			return result, err
-		}
+		return result, nil
 	}
-
-	for _, poke := range parsedLocation.Encounters {
-		result = append(result, poke.Pokemon)
-	}
-
-	return result, nil
 }
